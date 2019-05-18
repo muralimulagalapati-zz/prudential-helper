@@ -35,16 +35,37 @@ const validateSearchRecords = (result) => {
   )
 }
 
-const getDescription = (result) => {
+const validateDetails = (result) => {
   return (result.hasOwnProperty('GoodreadsResponse')
       ? result.GoodreadsResponse.hasOwnProperty('book')
-      ? result.GoodreadsResponse.book.hasOwnProperty('description')
-      ? result.GoodreadsResponse.book.description._cdata
-      : ''
-      : ''
-      : ''
+      ? result.GoodreadsResponse.book
+      : null
+      : null
     )
 }
+
+const getAuthors = (authors) => {
+  if (Array.isArray(authors)) {
+    let authorString = authors.reduce((authorStr, author) => (
+      `${authorStr} ${author.name._text},`
+    ), '')
+    authorString = authorString.trim()
+    return authorString[authorString.length - 1] === ','
+      ? authorString.slice(0, -1) : authorString
+  }
+  return authors.name._text
+}
+
+const formatBookDetails = (details) => ({
+  id: details ? details.id._text : null,
+  title: details ? details.title._text : '',
+  imageSrc: details ? details.image_url._text : '',
+  author: details ? getAuthors(details.authors.author) : '',
+  averageRating: details ? details.average_rating._text : 0.0,
+  ratingsCount: details ? details.ratings_count._cdata : 0,
+  reviewsCount: details ? details.text_reviews_count._cdata : 0,
+  description: details ? details.description._cdata : ''
+})
 
 const searchResultsApi = async (req, res) => {
   const { q = ''} = req.query
@@ -64,7 +85,7 @@ const searchResultsApi = async (req, res) => {
   }
 }
 
-const bookDescriptionApi = async (req, res) => {
+const bookDetailsApi = async (req, res) => {
   const { id } = req.params
   if (isNaN(id)) {
     return res.status(400).send('Book id can only be a number')
@@ -75,8 +96,10 @@ const bookDescriptionApi = async (req, res) => {
   try {
     const response = await axios.get(url)    
     const result = convert.xml2js(response.data, convertOpts)
-    const description = getDescription(result)
-    res.send(description)
+    let details = validateDetails(result)
+    details = formatBookDetails(details)
+    console.log('formated details', details)
+    res.send(details)
   } catch (ex) {
     if (ex && ex.response && parseInt(ex.response.status)) {
       res.status(ex.response.status).send(ex.response.statusText)
@@ -88,5 +111,5 @@ const bookDescriptionApi = async (req, res) => {
 
 module.exports = {
   searchResultsApi,
-  bookDescriptionApi
+  bookDetailsApi
 }
