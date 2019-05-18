@@ -98,7 +98,6 @@ const bookDetailsApi = async (req, res) => {
     const result = convert.xml2js(response.data, convertOpts)
     let details = validateDetails(result)
     details = formatBookDetails(details)
-    console.log('formated details', details)
     res.send(details)
   } catch (ex) {
     if (ex && ex.response && parseInt(ex.response.status)) {
